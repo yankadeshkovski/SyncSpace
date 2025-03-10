@@ -37,10 +37,10 @@ command to run if program contains helper info
 
 ## Authors
 
-Yanka Deshkovski
-Priyanka Jain
-Steven Cartwright
-Laurynas Kanopka
+Yanka Deshkovski,
+Priyanka Jain,
+Steven Cartwright,
+Laurynas Kanopka,
 
 <!-- ## Version History
 
