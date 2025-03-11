@@ -1,0 +1,16 @@
+For backend: 
+1. Run pip install -r requirements.txt
+2. Run app.py, ensure this starts the Flask environment successfully.
+
+For frontend:
+In command line, go to cd [project directory]/syncspace/frontend, then run:
+1. npm install 
+2. npm install axios
+3. npm start
+React environment should start successfully.
+
+Database: 
+Connection information is hardcoded right now. For access, make
+sure Steven has added your IP address to the AWS security rules (IP address: http://checkip.amazonaws.com/). 
+Direct database manipulation is possible through MySQL Workbench, which
+can be connected with the same details as the pymysql connection.

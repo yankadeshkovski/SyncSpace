@@ -4,7 +4,11 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 ## Available Scripts
 
-In the project directory, you can run:
+In the project directory (SyncSpace/syncspace/frontend), you can run:
+
+### 'npm install'
+
+This will insure all dependencies / requirements like node_modules are isntantiated properly.
 
 ### `npm start`
 
