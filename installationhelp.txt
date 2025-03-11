@@ -11,6 +11,6 @@ React environment should start successfully.
 
 Database: 
 Connection information is hardcoded right now. For access, make
-sure Steven has added your IP address to the AWS security rules. 
+sure Steven has added your IP address to the AWS security rules (IP address: http://checkip.amazonaws.com/). 
 Direct database manipulation is possible through MySQL Workbench, which
 can be connected with the same details as the pymysql connection.
