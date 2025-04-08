@@ -1,6 +1,9 @@
 For backend: 
 1. Run pip install -r requirements.txt
+pip install -r requirements.txt
+
 2. Run app.py, ensure this starts the Flask environment successfully.
+cd backend && python app.py
 
 For frontend:
 In command line, go to cd [project directory]/syncspace/frontend, then run:
