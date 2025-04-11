@@ -90,6 +90,7 @@ function App() {
       .post("http://127.0.0.1:5000/users", newUser)
       .then((response) => {
         const createdUser = response.data;
+        console.log("User created successfully:", createdUser);
         setCreateUserMessage("User created successfully!");
         setCurrentUser(createdUser);
         setCreateName("");
@@ -100,7 +101,8 @@ function App() {
         fetchUsers(); // Refresh the users list
       })
       .catch((error) => {
-        setCreateUserMessage("Error creating user: " + error.response.data.error);
+        console.error("Create user error details:", error);
+        setCreateUserMessage("Error creating user: " + (error.response?.data?.error || error.message));
       });
   };
 
@@ -149,7 +151,7 @@ function App() {
         fetchUsers(); // Refresh the users list
       })
       .catch((error) => {
-        setUpdateMessage("Error deleting account: " + error.response.data.error);
+        setUpdateMessage("Error deleting account: " + (error.response?.data?.error || error.message));
       });
   };
 
