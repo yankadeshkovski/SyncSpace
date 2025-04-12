@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
+import Messages from "./components/Messages";
 
 function App() {
   const [users, setUsers] = useState([]);
@@ -214,12 +215,7 @@ function App() {
         </div>
       );
     } else if (activeTab === "messages") {
-      return (
-        <div>
-          <h2>Messages</h2>
-          <p>This is where messages will be displayed.</p>
-        </div>
-      );
+      return currentUser ? <Messages currentUser={currentUser} /> : <p>Please login to view messages</p>;
     } else if (activeTab === "groups") {
       return (
         <div>
