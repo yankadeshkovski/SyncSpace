@@ -384,12 +384,67 @@ def send_group_message(group_id):
             return jsonify({"error": "User is not a member of this group"}), 403
 
         # Send message
-        sql = "INSERT INTO group_messages (group_id, sender_id, content) VALUES (%s, %s, %s)"
+        sql = "INSERT INTO group_messages (group_id, sender_id, content, created_at) VALUES (%s, %s, %s, NOW())"
         cursor.execute(sql, (group_id, sender_id, content))
+        message_id = cursor.lastrowid
         db.commit()
-        return jsonify({"message": "Message sent successfully"}), 201
+        
+        # Get the inserted message with sender name
+        sql = """
+            SELECT m.id, m.group_id, m.sender_id, m.content, m.created_at, u.name as sender_name 
+            FROM group_messages m 
+            JOIN user_verification u ON m.sender_id = u.id 
+            WHERE m.id = %s
+        """
+        cursor.execute(sql, (message_id,))
+        message = cursor.fetchone()
+        
+        # Format response
+        result = {
+            "id": message[0],
+            "group_id": message[1],
+            "sender_id": message[2],
+            "content": message[3],
+            "created_at": message[4],
+            "sender_name": message[5]
+        }
+        
+        return jsonify(result), 201
     except pymysql.MySQLError as e:
         db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/groups/<int:group_id>/members', methods=['GET'])
+def get_group_members(group_id):
+    """Get all members of a specific group"""
+    db = get_db_connection()
+    if db is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = db.cursor()
+    try:
+        sql = """
+            SELECT u.id, u.name, u.email
+            FROM user_verification u
+            JOIN group_chat_members m ON u.id = m.user_id
+            WHERE m.group_id = %s
+            ORDER BY u.name ASC
+        """
+        cursor.execute(sql, (group_id,))
+        members = cursor.fetchall()
+        
+        result = [{
+            "id": member[0],
+            "name": member[1],
+            "email": member[2]
+        } for member in members]
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error getting group members: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()

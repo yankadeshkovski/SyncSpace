@@ -13,6 +13,8 @@ const Messages = ({ currentUser }) => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const messagesListRef = useRef(null);
+  const [showCreateGroupForm, setShowCreateGroupForm] = useState(false);
+  const [groupMembers, setGroupMembers] = useState([]);
 
   // API endpoints
   const API_BASE = 'http://127.0.0.1:5000';
@@ -23,34 +25,42 @@ const Messages = ({ currentUser }) => {
     groupMessages: (groupId) => `${API_BASE}/groups/${groupId}/messages`
   };
 
-  // Fetch users for group creation
-  useEffect(() => {
+  // Split the user fetching into a separate function for reuse
+  const fetchUsers = useCallback(() => {
     if (currentUser) {
-      console.log('Fetching users for group creation...');
-      
-      // Fetch users when showGroups is true - only load users when needed
-      if (showGroups) {
-        axios.get(endpoints.users)
-          .then(response => {
-            console.log('Users API response:', response.data);
-            if (Array.isArray(response.data)) {
-              const filteredUsers = response.data
-                .filter(user => user.id !== currentUser.id)
-                .sort((a, b) => a.name.localeCompare(b.name));
-              console.log('Filtered users:', filteredUsers);
-              setUsers(filteredUsers);
-            } else {
-              console.error('API returned non-array data for users:', response.data);
-              setError('Failed to load users: Invalid data format');
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching users:', error);
-            setError('Failed to load users. Please try again.');
-          });
-      }
+      console.log('Fetching users...');
+      axios.get(endpoints.users)
+        .then(response => {
+          console.log('Users API response:', response.data);
+          if (Array.isArray(response.data)) {
+            const filteredUsers = response.data
+              .filter(user => user.id !== currentUser.id)
+              .sort((a, b) => a.name.localeCompare(b.name));
+            console.log('Filtered users:', filteredUsers);
+            setUsers(filteredUsers);
+          } else {
+            console.error('API returned non-array data for users:', response.data);
+            setError('Failed to load users: Invalid data format');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching users:', error);
+          setError('Failed to load users. Please try again.');
+        });
     }
-  }, [currentUser, showGroups]); // Load users when tab switches to groups
+  }, [currentUser, endpoints.users]);
+
+  // Fetch users when component mounts
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // When showGroups changes, ensure users are loaded for group creation
+  useEffect(() => {
+    if (showGroups) {
+      fetchUsers();
+    }
+  }, [showGroups, fetchUsers]);
 
   // Fetch groups
   useEffect(() => {
@@ -77,8 +87,9 @@ const Messages = ({ currentUser }) => {
       });
   }, [currentUser.id]);
 
-  // Fetch group messages
+  // Fetch group messages and members
   const fetchGroupMessages = useCallback((groupId) => {
+    // Fetch messages
     axios.get(endpoints.groupMessages(groupId))
       .then(response => {
         setMessages(response.data);
@@ -87,6 +98,16 @@ const Messages = ({ currentUser }) => {
       .catch(error => {
         console.error('Error fetching group messages:', error);
         setError('Failed to load group messages. Please try again.');
+      });
+    
+    // Fetch group members
+    axios.get(`${endpoints.groups}/${groupId}/members`)
+      .then(response => {
+        console.log('Group members:', response.data);
+        setGroupMembers(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching group members:', error);
       });
   }, []); 
 
@@ -207,45 +228,60 @@ const Messages = ({ currentUser }) => {
         
         {showGroups ? (
           <>
-            <div className="create-group">
-              <input
-                type="text"
-                placeholder="Group Name"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-              />
-              <div className="user-selection">
-                {users.length === 0 ? (
-                  <div className="no-users-message">No users available</div>
-                ) : (
-                  users.map(user => (
-                    <div key={user.id} className="user-checkbox">
-                      <input
-                        type="checkbox"
-                        id={`user-${user.id}`}
-                        checked={selectedUsers.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedUsers([...selectedUsers, user.id]);
-                          } else {
-                            setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                          }
-                        }}
-                      />
-                      <label htmlFor={`user-${user.id}`} title={user.name}>
-                        {user.name}
-                      </label>
-                    </div>
-                  ))
-                )}
+            {showCreateGroupForm ? (
+              <div className="create-group">
+                <div className="create-group-header">
+                  <h3>Create New Group</h3>
+                  <button onClick={() => setShowCreateGroupForm(false)}>Cancel</button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Group Name"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                />
+                <div className="user-selection">
+                  {users.length === 0 ? (
+                    <div className="no-users-message">No users available</div>
+                  ) : (
+                    users.map(user => (
+                      <div key={user.id} className="user-checkbox">
+                        <input
+                          type="checkbox"
+                          id={`user-${user.id}`}
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUsers([...selectedUsers, user.id]);
+                            } else {
+                              setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`user-${user.id}`} title={user.name}>
+                          {user.name}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <button 
+                  onClick={createGroup}
+                  disabled={!newGroupName.trim() || selectedUsers.length === 0}
+                >
+                  Create Group
+                </button>
               </div>
-              <button 
-                onClick={createGroup}
-                disabled={!newGroupName.trim() || selectedUsers.length === 0}
-              >
-                Create Group
-              </button>
-            </div>
+            ) : (
+              <div className="create-group-button-container">
+                <button 
+                  className="create-group-button" 
+                  onClick={() => setShowCreateGroupForm(true)}
+                >
+                  + Create New Group
+                </button>
+              </div>
+            )}
             <div className="groups-list">
               {groups.map(group => (
                 <div
@@ -286,6 +322,17 @@ const Messages = ({ currentUser }) => {
           <>
             <div className="messages-header">
               <h2>{selectedConversation.name}</h2>
+              {selectedConversation.type === 'group' && (
+                <div className="group-members">
+                  {groupMembers.length > 0 ? (
+                    <>
+                      Members: {groupMembers.map(member => member.name).join(', ')}
+                    </>
+                  ) : (
+                    <span>Loading members...</span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="messages-list" ref={messagesListRef}>
               {messages.length === 0 ? (
