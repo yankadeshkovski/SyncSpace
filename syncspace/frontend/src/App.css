@@ -46,7 +46,7 @@
 /* Messages Styles */
 .messages-container {
   display: flex;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 150px);
   border: 1px solid #ddd;
   border-radius: 8px;
   overflow: hidden;
@@ -58,6 +58,7 @@
   display: flex;
   flex-direction: column;
   background-color: #f8f9fa;
+  overflow-y: auto;
 }
 
 .conversation-header {
@@ -146,6 +147,7 @@
   display: flex;
   flex-direction: column;
   background-color: white;
+  overflow: hidden;
 }
 
 .messages-header {
@@ -162,6 +164,8 @@
   flex: 1;
   padding: 15px;
   overflow-y: auto;
+  height: calc(100% - 130px);
+  min-height: 100px;
 }
 
 .message {
@@ -202,6 +206,7 @@
   border-top: 1px solid #ddd;
   display: flex;
   gap: 10px;
+  position: relative;
 }
 
 .message-input input {

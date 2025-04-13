@@ -230,6 +230,32 @@ function App() {
           <p>This is where events will be displayed.</p>
         </div>
       );
+    } else if (activeTab === "users") {
+      return (
+        <div>
+          <h2>User List</h2>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.name}</td>
+                  <td>{user.username}</td>
+                  <td>{user.email}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     } else if (activeTab === "profile") {
       return (
         <div>
@@ -274,36 +300,12 @@ function App() {
           <button onClick={() => setActiveTab("groups")}>Groups</button>
           <button onClick={() => setActiveTab("events")}>Events</button>
           <button onClick={() => setActiveTab("login")}>Login</button>
+          <button onClick={() => setActiveTab("users")}>Users</button>
           <button onClick={() => setActiveTab("profile")}>Profile</button>
         </nav>
       </header>
       <main className="app-content">
         {renderContent()}
-        {activeTab === "messages" && (
-          <>
-            <h2>User List</h2>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Username</th>
-                  <th>Email</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.id}</td>
-                    <td>{user.name}</td>
-                    <td>{user.username}</td>
-                    <td>{user.email}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
       </main>
     </div>
   );

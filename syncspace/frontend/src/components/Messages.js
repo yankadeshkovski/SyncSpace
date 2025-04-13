@@ -38,7 +38,7 @@ const Messages = ({ currentUser }) => {
           setError('Failed to load users. Please try again.');
         });
     }
-  }, [currentUser]); // endpoints.users is constant, no need to include
+  }, [currentUser]); 
 
   // Fetch groups
   useEffect(() => {
@@ -50,7 +50,7 @@ const Messages = ({ currentUser }) => {
           setError('Failed to load groups. Please try again.');
         });
     }
-  }, [currentUser]); // endpoints.groups is constant, no need to include
+  }, [currentUser]); 
 
   // Fetch messages
   const fetchMessages = useCallback((otherUserId) => {
@@ -63,7 +63,7 @@ const Messages = ({ currentUser }) => {
         console.error('Error fetching messages:', error);
         setError('Failed to load messages. Please try again.');
       });
-  }, [currentUser.id]); // endpoints.messages is constant, no need to include
+  }, [currentUser.id]);
 
   // Fetch group messages
   const fetchGroupMessages = useCallback((groupId) => {
@@ -76,7 +76,7 @@ const Messages = ({ currentUser }) => {
         console.error('Error fetching group messages:', error);
         setError('Failed to load group messages. Please try again.');
       });
-  }, []); // endpoints is constant, no need to include
+  }, []); 
 
   // Send message
   const sendMessage = useCallback(() => {
@@ -116,7 +116,7 @@ const Messages = ({ currentUser }) => {
           setError('Failed to send message. Please try again.');
         });
     }
-  }, [newMessage, selectedConversation, currentUser.id]); // endpoints is constant, no need to include
+  }, [newMessage, selectedConversation, currentUser.id]);
 
   // Create group
   const createGroup = () => {
