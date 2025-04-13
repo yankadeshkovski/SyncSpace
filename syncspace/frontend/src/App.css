@@ -53,7 +53,7 @@
 }
 
 .conversations-sidebar {
-  width: 300px;
+  width: 400px;
   border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
@@ -84,32 +84,65 @@
 }
 
 .create-group {
-  padding: 15px;
+  padding: 10px;
   border-bottom: 1px solid #ddd;
 }
 
-.create-group input {
+.create-group input[type="text"] {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
+  padding: 6px;
+  margin-bottom: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 12px;
+}
+
+.create-group button {
+  width: 100%;
+  padding: 6px;
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .user-selection {
   max-height: 200px;
   overflow-y: auto;
   margin-bottom: 10px;
+  border: 1px solid #ddd;
+  padding: 8px;
+  background-color: white;
+  overflow-x: hidden;
+  width: auto;
 }
 
 .user-checkbox {
   display: flex;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  padding: 2px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.user-checkbox input {
-  margin-right: 10px;
+.user-checkbox input[type="checkbox"] {
+  margin-right: 6px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.user-checkbox label {
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+  color: #333;
 }
 
 .groups-list, .users-list {
@@ -251,4 +284,13 @@
   font-style: italic;
   padding: 20px;
   text-align: center;
+}
+
+.no-users-message {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  background-color: #f9f9f9;
+  border-radius: 4px;
 }

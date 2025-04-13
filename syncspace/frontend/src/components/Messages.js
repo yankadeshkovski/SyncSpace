@@ -26,19 +26,31 @@ const Messages = ({ currentUser }) => {
   // Fetch users for group creation
   useEffect(() => {
     if (currentUser) {
-      axios.get(endpoints.users)
-        .then(response => {
-          const filteredUsers = response.data
-            .filter(user => user.id !== currentUser.id)
-            .sort((a, b) => a.name.localeCompare(b.name));
-          setUsers(filteredUsers);
-        })
-        .catch(error => {
-          console.error('Error fetching users:', error);
-          setError('Failed to load users. Please try again.');
-        });
+      console.log('Fetching users for group creation...');
+      
+      // Fetch users when showGroups is true - only load users when needed
+      if (showGroups) {
+        axios.get(endpoints.users)
+          .then(response => {
+            console.log('Users API response:', response.data);
+            if (Array.isArray(response.data)) {
+              const filteredUsers = response.data
+                .filter(user => user.id !== currentUser.id)
+                .sort((a, b) => a.name.localeCompare(b.name));
+              console.log('Filtered users:', filteredUsers);
+              setUsers(filteredUsers);
+            } else {
+              console.error('API returned non-array data for users:', response.data);
+              setError('Failed to load users: Invalid data format');
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching users:', error);
+            setError('Failed to load users. Please try again.');
+          });
+      }
     }
-  }, [currentUser]); 
+  }, [currentUser, showGroups]); // Load users when tab switches to groups
 
   // Fetch groups
   useEffect(() => {
@@ -129,20 +141,31 @@ const Messages = ({ currentUser }) => {
       return;
     }
 
-    axios.post(endpoints.groups, {
+    const groupData = {
       name: newGroupName,
       created_by: currentUser.id,
       member_ids: selectedUsers
-    })
-      .then(() => {
+    };
+    
+    console.log('Creating group with data:', groupData);
+    
+    axios.post(endpoints.groups, groupData)
+      .then(response => {
+        console.log('Group created successfully:', response.data);
         setNewGroupName('');
         setSelectedUsers([]);
-        setShowGroups(false);
+        setError('');
+        
+        // Fetch updated groups list
         return axios.get(`${endpoints.groups}?user_id=${currentUser.id}`);
       })
-      .then(response => setGroups(response.data))
+      .then(response => {
+        console.log('Updated groups list:', response.data);
+        setGroups(response.data);
+        setShowGroups(true); // Make sure we're showing groups after creation
+      })
       .catch(error => {
-        console.error('Error creating group:', error);
+        console.error('Error creating group:', error.response?.data || error.message);
         setError('Failed to create group. Please try again.');
       });
   };
@@ -192,25 +215,36 @@ const Messages = ({ currentUser }) => {
                 onChange={(e) => setNewGroupName(e.target.value)}
               />
               <div className="user-selection">
-                {users.map(user => (
-                  <div key={user.id} className="user-checkbox">
-                    <input
-                      type="checkbox"
-                      id={`user-${user.id}`}
-                      checked={selectedUsers.includes(user.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedUsers([...selectedUsers, user.id]);
-                        } else {
-                          setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                        }
-                      }}
-                    />
-                    <label htmlFor={`user-${user.id}`}>{user.name}</label>
-                  </div>
-                ))}
+                {users.length === 0 ? (
+                  <div className="no-users-message">No users available</div>
+                ) : (
+                  users.map(user => (
+                    <div key={user.id} className="user-checkbox">
+                      <input
+                        type="checkbox"
+                        id={`user-${user.id}`}
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers([...selectedUsers, user.id]);
+                          } else {
+                            setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                          }
+                        }}
+                      />
+                      <label htmlFor={`user-${user.id}`} title={user.name}>
+                        {user.name}
+                      </label>
+                    </div>
+                  ))
+                )}
               </div>
-              <button onClick={createGroup}>Create Group</button>
+              <button 
+                onClick={createGroup}
+                disabled={!newGroupName.trim() || selectedUsers.length === 0}
+              >
+                Create Group
+              </button>
             </div>
             <div className="groups-list">
               {groups.map(group => (
