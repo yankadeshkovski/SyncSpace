@@ -1,138 +1,149 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+// Simple, readable Messages component
 const Messages = ({ currentUser }) => {
-  // State
+  // --- State variables ---
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [groups, setGroups] = useState([]);
+  const [users, setUsers] = useState([]);
   const [showGroups, setShowGroups] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
-  const messagesListRef = useRef(null);
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
   const [conversationTimestamps, setConversationTimestamps] = useState({});
+  
+  // Reference to message list for scrolling
+  const messagesListRef = useRef(null);
 
-  // API endpoints
+  // API URL
   const API_BASE = 'http://127.0.0.1:5000';
-  const endpoints = {
-    users: `${API_BASE}/users`,
-    groups: `${API_BASE}/groups`,
-    messages: `${API_BASE}/messages`,
-    groupMessages: (groupId) => `${API_BASE}/groups/${groupId}/messages`
-  };
 
-  // Split the user fetching into a separate function for reuse
-  const fetchUsers = useCallback(() => {
-    if (currentUser) {
-      console.log('Fetching users...');
-      axios.get(endpoints.users)
-        .then(response => {
-          console.log('Users API response:', response.data);
-          if (Array.isArray(response.data)) {
-            const filteredUsers = response.data
-              .filter(user => user.id !== currentUser.id)
-              .sort((a, b) => a.name.localeCompare(b.name));
-            console.log('Filtered users:', filteredUsers);
-            setUsers(filteredUsers);
-          } else {
-            console.error('API returned non-array data for users:', response.data);
-            setError('Failed to load users: Invalid data format');
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching users:', error);
-          setError('Failed to load users. Please try again.');
-        });
-    }
-  }, [currentUser, endpoints.users]);
-
-  // Fetch users when component mounts
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  // When showGroups changes, ensure users are loaded for group creation
-  useEffect(() => {
-    if (showGroups) {
-      fetchUsers();
-    }
-  }, [showGroups, fetchUsers]);
-
-  // Fetch groups
+  // --- Load users when component mounts ---
   useEffect(() => {
     if (currentUser) {
-      axios.get(`${endpoints.groups}?user_id=${currentUser.id}`)
-        .then(response => setGroups(response.data))
-        .catch(error => {
-          console.error('Error fetching groups:', error);
-          setError('Failed to load groups. Please try again.');
-        });
+      fetchUsersList();
     }
-  }, [currentUser]); 
+  }, [currentUser]);
 
-  // Fetch messages
-  const fetchMessages = useCallback((otherUserId) => {
-    axios.get(`${endpoints.messages}?user_id=${currentUser.id}&other_user_id=${otherUserId}`)
+  // --- Fetch groups when component mounts ---
+  useEffect(() => {
+    if (currentUser) {
+      fetchGroupsList();
+    }
+  }, [currentUser]);
+
+  // --- Auto-scroll messages when they change ---
+  useEffect(() => {
+    if (messagesListRef.current) {
+      messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // --- Poll for new messages ---
+  useEffect(() => {
+    if (!selectedConversation) return;
+    
+    // Initial fetch
+    updateMessages();
+    
+    // Set up interval
+    const interval = setInterval(updateMessages, 5000);
+    
+    // Clean up
+    return () => clearInterval(interval);
+  }, [selectedConversation]);
+
+  // --- Helper Functions ---
+
+  // Update messages based on selected conversation
+  function updateMessages() {
+    if (!selectedConversation) return;
+    
+    if (selectedConversation.type === 'direct') {
+      fetchDirectMessages(selectedConversation.id);
+    } else {
+      fetchGroupMessages(selectedConversation.id);
+    }
+  }
+
+  // Fetch list of users
+  function fetchUsersList() {
+    axios.get(`${API_BASE}/users`)
       .then(response => {
-        setMessages(response.data);
-        // Store most recent message timestamp for this conversation
-        if (response.data.length > 0) {
-          const sortedMessages = [...response.data].sort((a, b) => 
-            new Date(b.created_at) - new Date(a.created_at)
-          );
-          setConversationTimestamps(prev => ({
-            ...prev,
-            [`user-${otherUserId}`]: sortedMessages[0].created_at
-          }));
-        }
-        setError('');
+        // Filter out current user and sort alphabetically
+        const filteredUsers = response.data
+          .filter(user => user.id !== currentUser.id)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setUsers(filteredUsers);
       })
       .catch(error => {
-        console.error('Error fetching messages:', error);
-        setError('Failed to load messages. Please try again.');
+        setError('Failed to load users');
       });
-  }, [currentUser.id]);
+  }
 
-  // Fetch group messages and members
-  const fetchGroupMessages = useCallback((groupId) => {
-    axios.get(endpoints.groupMessages(groupId))
+  // Fetch list of groups
+  function fetchGroupsList() {
+    axios.get(`${API_BASE}/groups?user_id=${currentUser.id}`)
       .then(response => {
-        setMessages(response.data);
-        // Store most recent message timestamp for this group
-        if (response.data.length > 0) {
-          const sortedMessages = [...response.data].sort((a, b) => 
-            new Date(b.created_at) - new Date(a.created_at)
-          );
-          setConversationTimestamps(prev => ({
-            ...prev,
-            [`group-${groupId}`]: sortedMessages[0].created_at
-          }));
-        }
-        setError('');
+        setGroups(response.data);
       })
       .catch(error => {
-        console.error('Error fetching group messages:', error);
-        setError('Failed to load group messages. Please try again.');
+        setError('Failed to load groups');
+      });
+  }
+
+  // Fetch direct messages between two users
+  function fetchDirectMessages(otherUserId) {
+    axios.get(`${API_BASE}/messages?user_id=${currentUser.id}&other_user_id=${otherUserId}`)
+      .then(response => {
+        setMessages(response.data);
+        
+        // Update timestamp for sorting
+        if (response.data.length > 0) {
+          const newestMessage = findNewestMessage(response.data);
+          updateConversationTimestamp(`user-${otherUserId}`, newestMessage.created_at);
+        }
+      })
+      .catch(error => {
+        setError('Failed to load messages');
+      });
+  }
+
+  // Fetch group messages
+  function fetchGroupMessages(groupId) {
+    // Get messages
+    axios.get(`${API_BASE}/groups/${groupId}/messages`)
+      .then(response => {
+        setMessages(response.data);
+        
+        // Update timestamp for sorting
+        if (response.data.length > 0) {
+          const newestMessage = findNewestMessage(response.data);
+          updateConversationTimestamp(`group-${groupId}`, newestMessage.created_at);
+        }
+      })
+      .catch(error => {
+        setError('Failed to load messages');
       });
     
-    // Fetch group members
-    axios.get(`${endpoints.groups}/${groupId}/members`)
+    // Get group members
+    axios.get(`${API_BASE}/groups/${groupId}/members`)
       .then(response => {
-        console.log('Group members:', response.data);
         setGroupMembers(response.data);
       })
       .catch(error => {
-        console.error('Error fetching group members:', error);
+        setError('Failed to load group members');
       });
-  }, []); 
+  }
 
-  // Send message
-  const sendMessage = useCallback(() => {
+  // Send a new message
+  function sendMessage() {
+    // Validate input
     if (!newMessage.trim()) {
       setError('Message cannot be empty');
       return;
@@ -147,42 +158,36 @@ const Messages = ({ currentUser }) => {
       content: newMessage.trim()
     };
 
+    // Send direct message
     if (selectedConversation.type === 'direct') {
       messageData.recipient_id = selectedConversation.id;
-      axios.post(endpoints.messages, messageData)
+      
+      axios.post(`${API_BASE}/messages`, messageData)
         .then(response => {
           setNewMessage('');
-          setMessages(prev => [...prev, response.data]);
-          // Update timestamp for this conversation
-          setConversationTimestamps(prev => ({
-            ...prev,
-            [`user-${selectedConversation.id}`]: response.data.created_at
-          }));
+          setMessages([...messages, response.data]);
+          updateConversationTimestamp(`user-${selectedConversation.id}`, response.data.created_at);
         })
         .catch(error => {
-          console.error('Error sending message:', error);
-          setError('Failed to send message. Please try again.');
+          setError('Failed to send message');
         });
-    } else {
-      axios.post(endpoints.groupMessages(selectedConversation.id), messageData)
+    } 
+    // Send group message
+    else {
+      axios.post(`${API_BASE}/groups/${selectedConversation.id}/messages`, messageData)
         .then(response => {
           setNewMessage('');
-          setMessages(prev => [...prev, response.data]);
-          // Update timestamp for this group
-          setConversationTimestamps(prev => ({
-            ...prev,
-            [`group-${selectedConversation.id}`]: response.data.created_at
-          }));
+          setMessages([...messages, response.data]);
+          updateConversationTimestamp(`group-${selectedConversation.id}`, response.data.created_at);
         })
         .catch(error => {
-          console.error('Error sending group message:', error);
-          setError('Failed to send message. Please try again.');
+          setError('Failed to send message');
         });
     }
-  }, [newMessage, selectedConversation, currentUser.id]);
+  }
 
-  // Create group
-  const createGroup = () => {
+  // Create a new group
+  function createGroup() {
     if (!newGroupName.trim()) {
       setError('Please enter a group name');
       return;
@@ -192,79 +197,80 @@ const Messages = ({ currentUser }) => {
       return;
     }
 
-    const groupData = {
+    axios.post(`${API_BASE}/groups`, {
       name: newGroupName,
       created_by: currentUser.id,
       member_ids: selectedUsers
-    };
-    
-    console.log('Creating group with data:', groupData);
-    
-    axios.post(endpoints.groups, groupData)
-      .then(response => {
-        console.log('Group created successfully:', response.data);
+    })
+      .then(() => {
+        // Reset form
         setNewGroupName('');
         setSelectedUsers([]);
-        setError('');
+        setShowCreateGroupForm(false);
         
-        // Fetch updated groups list
-        return axios.get(`${endpoints.groups}?user_id=${currentUser.id}`);
-      })
-      .then(response => {
-        console.log('Updated groups list:', response.data);
-        setGroups(response.data);
-        setShowGroups(true); // Make sure we're showing groups after creation
+        // Refresh groups list
+        fetchGroupsList();
       })
       .catch(error => {
-        console.error('Error creating group:', error.response?.data || error.message);
-        setError('Failed to create group. Please try again.');
+        setError('Failed to create group');
       });
-  };
+  }
 
-  // Poll for new messages
-  useEffect(() => {
-    const pollMessages = () => {
-      if (selectedConversation) {
-        if (selectedConversation.type === 'direct') {
-          fetchMessages(selectedConversation.id);
-        } else {
-          fetchGroupMessages(selectedConversation.id);
-        }
-      }
-    };
-
-    pollMessages();
-    const pollInterval = setInterval(pollMessages, 5000);
-    return () => clearInterval(pollInterval);
-  }, [selectedConversation, currentUser.id, fetchMessages, fetchGroupMessages]);
-
-  // Scroll messages list to bottom when messages change
-  useEffect(() => {
-    if (messagesListRef.current) {
-      messagesListRef.current.scrollTop = messagesListRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Add sorting functions for users and groups
-  const sortedUsers = useMemo(() => {
+  // --- Utility Functions ---
+  
+  // Find the newest message in an array
+  function findNewestMessage(messageArray) {
+    return messageArray.reduce((newest, current) => {
+      const newestDate = new Date(newest.created_at);
+      const currentDate = new Date(current.created_at);
+      return currentDate > newestDate ? current : newest;
+    }, messageArray[0]);
+  }
+  
+  // Update the timestamp for a conversation
+  function updateConversationTimestamp(conversationId, timestamp) {
+    setConversationTimestamps({
+      ...conversationTimestamps,
+      [conversationId]: timestamp
+    });
+  }
+  
+  // Sort users by most recent message
+  function getSortedUsers() {
     return [...users].sort((a, b) => {
       const timeA = conversationTimestamps[`user-${a.id}`] || '2000-01-01';
       const timeB = conversationTimestamps[`user-${b.id}`] || '2000-01-01';
       return new Date(timeB) - new Date(timeA); // Most recent first
     });
-  }, [users, conversationTimestamps]);
-
-  const sortedGroups = useMemo(() => {
+  }
+  
+  // Sort groups by most recent message
+  function getSortedGroups() {
     return [...groups].sort((a, b) => {
       const timeA = conversationTimestamps[`group-${a.id}`] || '2000-01-01';
       const timeB = conversationTimestamps[`group-${b.id}`] || '2000-01-01';
       return new Date(timeB) - new Date(timeA); // Most recent first
     });
-  }, [groups, conversationTimestamps]);
+  }
 
+  // Format timestamp for display
+  function formatMessageTime(timestamp) {
+    const messageDate = new Date(timestamp);
+    return messageDate.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
+  // --- The Rendered Component ---
   return (
     <div className="messages-container">
       {error && <div className="error-message">{error}</div>}
+      
+      {/* Left sidebar */}
       <div className="conversations-sidebar">
         <div className="conversation-header">
           <h2>Messages</h2>
@@ -273,8 +279,10 @@ const Messages = ({ currentUser }) => {
           </button>
         </div>
         
+        {/* Groups section */}
         {showGroups ? (
           <>
+            {/* Group creation */}
             {showCreateGroupForm ? (
               <div className="create-group">
                 <div className="create-group-header">
@@ -329,8 +337,10 @@ const Messages = ({ currentUser }) => {
                 </button>
               </div>
             )}
+            
+            {/* Groups list */}
             <div className="groups-list">
-              {sortedGroups.map(group => (
+              {getSortedGroups().map(group => (
                 <div
                   key={group.id}
                   className={`conversation-item ${selectedConversation?.id === group.id ? 'selected' : ''}`}
@@ -346,14 +356,15 @@ const Messages = ({ currentUser }) => {
             </div>
           </>
         ) : (
+          /* Direct messages list */
           <div className="users-list">
-            {sortedUsers.map(user => (
+            {getSortedUsers().map(user => (
               <div
                 key={user.id}
                 className={`conversation-item ${selectedConversation?.id === user.id ? 'selected' : ''}`}
                 onClick={() => {
                   setSelectedConversation({ id: user.id, type: 'direct', name: user.name });
-                  fetchMessages(user.id);
+                  fetchDirectMessages(user.id);
                 }}
               >
                 <h3>{user.name}</h3>
@@ -364,9 +375,11 @@ const Messages = ({ currentUser }) => {
         )}
       </div>
 
+      {/* Messages area */}
       <div className="messages-area">
         {selectedConversation ? (
           <>
+            {/* Conversation header */}
             <div className="messages-header">
               <h2>{selectedConversation.name}</h2>
               {selectedConversation.type === 'group' && (
@@ -381,35 +394,28 @@ const Messages = ({ currentUser }) => {
                 </div>
               )}
             </div>
+            
+            {/* Messages list */}
             <div className="messages-list" ref={messagesListRef}>
               {messages.length === 0 ? (
                 <div className="no-messages">
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               ) : (
-                messages.map(message => {
-                  const messageDate = new Date(message.created_at);
-                  const formattedDate = messageDate.toLocaleString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  });
-
-                  return (
-                    <div
-                      key={message.id}
-                      className={`message ${message.sender_id === currentUser.id ? 'sent' : 'received'}`}
-                    >
-                      <div className="message-sender">{message.sender_name}</div>
-                      <div className="message-content">{message.content}</div>
-                      <div className="message-time">{formattedDate}</div>
-                    </div>
-                  );
-                })
+                messages.map(message => (
+                  <div
+                    key={message.id}
+                    className={`message ${message.sender_id === currentUser.id ? 'sent' : 'received'}`}
+                  >
+                    <div className="message-sender">{message.sender_name}</div>
+                    <div className="message-content">{message.content}</div>
+                    <div className="message-time">{formatMessageTime(message.created_at)}</div>
+                  </div>
+                ))
               )}
             </div>
+            
+            {/* Message input */}
             <div className="message-input">
               <input
                 type="text"
