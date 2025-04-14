@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 
 const Messages = ({ currentUser }) => {
@@ -15,6 +15,7 @@ const Messages = ({ currentUser }) => {
   const messagesListRef = useRef(null);
   const [showCreateGroupForm, setShowCreateGroupForm] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
+  const [conversationTimestamps, setConversationTimestamps] = useState({});
 
   // API endpoints
   const API_BASE = 'http://127.0.0.1:5000';
@@ -79,6 +80,16 @@ const Messages = ({ currentUser }) => {
     axios.get(`${endpoints.messages}?user_id=${currentUser.id}&other_user_id=${otherUserId}`)
       .then(response => {
         setMessages(response.data);
+        // Store most recent message timestamp for this conversation
+        if (response.data.length > 0) {
+          const sortedMessages = [...response.data].sort((a, b) => 
+            new Date(b.created_at) - new Date(a.created_at)
+          );
+          setConversationTimestamps(prev => ({
+            ...prev,
+            [`user-${otherUserId}`]: sortedMessages[0].created_at
+          }));
+        }
         setError('');
       })
       .catch(error => {
@@ -89,10 +100,19 @@ const Messages = ({ currentUser }) => {
 
   // Fetch group messages and members
   const fetchGroupMessages = useCallback((groupId) => {
-    // Fetch messages
     axios.get(endpoints.groupMessages(groupId))
       .then(response => {
         setMessages(response.data);
+        // Store most recent message timestamp for this group
+        if (response.data.length > 0) {
+          const sortedMessages = [...response.data].sort((a, b) => 
+            new Date(b.created_at) - new Date(a.created_at)
+          );
+          setConversationTimestamps(prev => ({
+            ...prev,
+            [`group-${groupId}`]: sortedMessages[0].created_at
+          }));
+        }
         setError('');
       })
       .catch(error => {
@@ -133,6 +153,11 @@ const Messages = ({ currentUser }) => {
         .then(response => {
           setNewMessage('');
           setMessages(prev => [...prev, response.data]);
+          // Update timestamp for this conversation
+          setConversationTimestamps(prev => ({
+            ...prev,
+            [`user-${selectedConversation.id}`]: response.data.created_at
+          }));
         })
         .catch(error => {
           console.error('Error sending message:', error);
@@ -143,6 +168,11 @@ const Messages = ({ currentUser }) => {
         .then(response => {
           setNewMessage('');
           setMessages(prev => [...prev, response.data]);
+          // Update timestamp for this group
+          setConversationTimestamps(prev => ({
+            ...prev,
+            [`group-${selectedConversation.id}`]: response.data.created_at
+          }));
         })
         .catch(error => {
           console.error('Error sending group message:', error);
@@ -215,6 +245,23 @@ const Messages = ({ currentUser }) => {
     }
   }, [messages]);
 
+  // Add sorting functions for users and groups
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      const timeA = conversationTimestamps[`user-${a.id}`] || '2000-01-01';
+      const timeB = conversationTimestamps[`user-${b.id}`] || '2000-01-01';
+      return new Date(timeB) - new Date(timeA); // Most recent first
+    });
+  }, [users, conversationTimestamps]);
+
+  const sortedGroups = useMemo(() => {
+    return [...groups].sort((a, b) => {
+      const timeA = conversationTimestamps[`group-${a.id}`] || '2000-01-01';
+      const timeB = conversationTimestamps[`group-${b.id}`] || '2000-01-01';
+      return new Date(timeB) - new Date(timeA); // Most recent first
+    });
+  }, [groups, conversationTimestamps]);
+
   return (
     <div className="messages-container">
       {error && <div className="error-message">{error}</div>}
@@ -283,7 +330,7 @@ const Messages = ({ currentUser }) => {
               </div>
             )}
             <div className="groups-list">
-              {groups.map(group => (
+              {sortedGroups.map(group => (
                 <div
                   key={group.id}
                   className={`conversation-item ${selectedConversation?.id === group.id ? 'selected' : ''}`}
@@ -300,7 +347,7 @@ const Messages = ({ currentUser }) => {
           </>
         ) : (
           <div className="users-list">
-            {users.map(user => (
+            {sortedUsers.map(user => (
               <div
                 key={user.id}
                 className={`conversation-item ${selectedConversation?.id === user.id ? 'selected' : ''}`}
