@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 import Messages from "./components/Messages";
+import Groups from "./components/Groups";
 
 // API URL
 const API_URL = "http://127.0.0.1:5000";
@@ -276,12 +277,7 @@ function App() {
       case "messages":
         return currentUser ? <Messages currentUser={currentUser} /> : <p>Please login to view messages</p>;
       case "groups":
-        return (
-          <div>
-            <h2>Groups</h2>
-            <p>This is where groups will be displayed.</p>
-          </div>
-        );
+        return currentUser ? <Groups currentUser={currentUser} /> : <p>Please login to view groups</p>;
       case "events":
         return (
           <div>
