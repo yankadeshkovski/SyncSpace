@@ -361,7 +361,7 @@ const Messages = ({ currentUser }) => {
             {getSortedUsers().map(user => (
               <div
                 key={user.id}
-                className={`conversation-item ${selectedConversation?.id === user.id ? 'selected' : ''}`}
+                className={`conversation-item ${selectedConversation?.id === user.id && selectedConversation?.type === 'direct' ? 'selected' : ''}`}
                 onClick={() => {
                   setSelectedConversation({ id: user.id, type: 'direct', name: user.name });
                   fetchDirectMessages(user.id);

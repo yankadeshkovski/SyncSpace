@@ -19,10 +19,43 @@
   margin: 0 10px;
   cursor: pointer;
   font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
 .app-nav button:hover {
-  text-decoration: underline;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-nav button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Add styles for the active tab */
+.app-nav button.active {
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: bold;
+}
+
+/* Add responsive styles for mobile */
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .app-nav {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 10px 0;
+  }
+
+  .app-nav button {
+    margin: 0 5px;
+    font-size: 14px;
+  }
 }
 
 .app-content {
