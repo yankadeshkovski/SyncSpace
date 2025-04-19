@@ -13,7 +13,7 @@ def register_group_routes(app):
         if db is None:
             return jsonify({"error": "Database connection failed"}), 500
 
-        cursor = db.cursor()
+        cursor = db.cursor() 
         try:
             sql = """
                 SELECT g.*, u.name as creator_name 
@@ -44,25 +44,37 @@ def register_group_routes(app):
         name = data.get('name')
         created_by = data.get('created_by')
         member_ids = data.get('member_ids', [])
-
+        
         if not name or not created_by:
             return jsonify({"error": "Missing required fields"}), 400
-
+        
         db = get_db_connection()
         if db is None:
             return jsonify({"error": "Database connection failed"}), 500
 
         cursor = db.cursor()
         try:
-            # Create group
-            cursor.execute("INSERT INTO group_chats (name, created_by) VALUES (%s, %s)", (name, created_by))
+            # Create the group
+            cursor.execute(
+                "INSERT INTO group_chats (name, created_by) VALUES (%s, %s)",
+                (name, created_by)
+            )
             group_id = cursor.lastrowid
             
-            # Add members
-            member_ids.append(created_by)  # Add creator as member
-            for member_id in member_ids:
-                cursor.execute("INSERT INTO group_chat_members (group_id, user_id) VALUES (%s, %s)", (group_id, member_id))
+            # Add creator as admin member
+            cursor.execute(
+                "INSERT INTO group_chat_members (group_id, user_id, admin) VALUES (%s, %s, 1)",
+                (group_id, created_by)
+            )
             
+            # Add other members (non-admin)
+            for member_id in member_ids:
+                if member_id != created_by:  # Skip creator as they're already added
+                    cursor.execute(
+                        "INSERT INTO group_chat_members (group_id, user_id, admin) VALUES (%s, %s, 0)",
+                        (group_id, member_id)
+                    )
+                
             db.commit()
             return jsonify({"message": "Group created successfully", "group_id": group_id}), 201
         except Exception as e:
@@ -169,7 +181,7 @@ def register_group_routes(app):
         cursor = db.cursor()
         try:
             sql = """
-                SELECT u.id, u.name, u.email
+                SELECT u.id, u.name, u.email, m.admin
                 FROM user_verification u
                 JOIN group_chat_members m ON u.id = m.user_id
                 WHERE m.group_id = %s
@@ -181,7 +193,8 @@ def register_group_routes(app):
             result = [{
                 "id": member[0],
                 "name": member[1],
-                "email": member[2]
+                "email": member[2],
+                "admin": member[3]
             } for member in members]
             
             return jsonify(result)
@@ -222,26 +235,33 @@ def register_group_routes(app):
             db.close()
 
     @app.route('/groups/<int:group_id>/members/<int:user_id>', methods=['DELETE'])
-    def remove_group_member(group_id, user_id):
+    def remove_member(group_id, user_id):
+        admin_id = request.args.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({"error": "Missing admin_id parameter"}), 400
+        
         db = get_db_connection()
         if db is None:
             return jsonify({"error": "Database connection failed"}), 500
 
         cursor = db.cursor()
         try:
-            # Check if user is the group creator
-            cursor.execute("SELECT created_by FROM group_chats WHERE id = %s", (group_id,))
-            group = cursor.fetchone()
-            if not group:
-                return jsonify({"error": "Group not found"}), 404
+            # Check if the requester is an admin
+            cursor.execute("""
+                SELECT 1 FROM group_chat_members 
+                WHERE group_id = %s AND user_id = %s AND admin = 1
+            """, (group_id, admin_id))
+            
+            if not cursor.fetchone():
+                return jsonify({"error": "Only group admins can remove members"}), 403
                 
-            if group[0] == user_id:
-                return jsonify({"error": "Cannot remove the group creator"}), 400
-                
-            # Remove member
-            cursor.execute("DELETE FROM group_chat_members WHERE group_id = %s AND user_id = %s", (group_id, user_id))
+            # Remove the member
+            cursor.execute("DELETE FROM group_chat_members WHERE group_id = %s AND user_id = %s", 
+                          (group_id, user_id))
+            
             if cursor.rowcount == 0:
-                return jsonify({"error": "User is not a member of this group"}), 404
+                return jsonify({"error": "Member not found in group"}), 404
                 
             db.commit()
             return jsonify({"message": "Member removed successfully"}), 200

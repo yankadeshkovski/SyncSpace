@@ -6,6 +6,7 @@ from flask_cors import CORS
 from utils.users import register_user_routes
 from utils.messages import register_message_routes
 from utils.groups import register_group_routes
+from utils.events import register_event_routes
 from utils.db import get_db_connection
 
 
@@ -18,6 +19,7 @@ api = Api(app)
 register_user_routes(app)
 register_message_routes(app)
 register_group_routes(app)
+register_event_routes(app)
 
 if __name__ == '__main__':
     app.run(debug=True)

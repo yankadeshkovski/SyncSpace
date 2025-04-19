@@ -3,6 +3,7 @@ import axios from "axios";
 import "./App.css";
 import Messages from "./components/Messages";
 import Groups from "./components/Groups";
+import Events from "./components/Events";
 
 // API URL
 const API_URL = "http://127.0.0.1:5000";
@@ -279,12 +280,7 @@ function App() {
       case "groups":
         return currentUser ? <Groups currentUser={currentUser} /> : <p>Please login to view groups</p>;
       case "events":
-        return (
-          <div>
-            <h2>Events</h2>
-            <p>This is where events will be displayed.</p>
-          </div>
-        );
+        return currentUser ? <Events currentUser={currentUser} /> : <p>Please login to view events</p>;
       case "users":
         return renderUsersTable();
       case "profile":
@@ -300,12 +296,21 @@ function App() {
         <h1>SyncSpace</h1>
         {currentUser && <p>Hello, {currentUser.name}!</p>}
         <nav className="app-nav">
-          <button onClick={() => setActiveTab("messages")}>Messages</button>
-          <button onClick={() => setActiveTab("groups")}>Groups</button>
-          <button onClick={() => setActiveTab("events")}>Events</button>
-          <button onClick={() => setActiveTab("login")}>Login</button>
-          <button onClick={() => setActiveTab("users")}>Users</button>
-          <button onClick={() => setActiveTab("profile")}>Profile</button>
+          {currentUser ? (
+            <>
+              <button onClick={() => setActiveTab("messages")}>Messages</button>
+              <button onClick={() => setActiveTab("groups")}>Groups</button>
+              <button onClick={() => setActiveTab("events")}>Events</button>
+              <button onClick={() => setActiveTab("users")}>Users</button>
+              <button onClick={() => setActiveTab("profile")}>Profile</button>
+              <button onClick={() => {
+                setCurrentUser(null);
+                setActiveTab("login");
+              }}>Logout</button>
+            </>
+          ) : (
+            <button onClick={() => setActiveTab("login")}>Login</button>
+          )}
         </nav>
       </header>
       <main className="app-content">

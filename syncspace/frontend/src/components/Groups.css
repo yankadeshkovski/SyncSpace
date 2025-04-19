@@ -304,7 +304,7 @@
 }
 
 .group-members-panel {
-  width: 200px;
+  width: 550px;
   border-left: 1px solid #ddd;
   padding: 15px;
   background-color: #f5f5f5;
@@ -409,4 +409,149 @@
     border-left: none;
     border-top: 1px solid #ddd;
   }
+}
+
+.group-events-section {
+  margin-top: 20px;
+  border-top: 1px solid #ddd;
+  padding-top: 15px;
+}
+
+.events-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.events-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.create-event-btn {
+  padding: 3px 8px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.create-event-btn:hover {
+  background-color: #45a049;
+}
+
+.create-event-form {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+.create-event-form input,
+.create-event-form textarea {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.create-event-form textarea {
+  height: 60px;
+  resize: vertical;
+}
+
+.create-event-form button {
+  width: 100%;
+  padding: 6px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.create-event-form button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.group-events-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.group-events-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.group-event-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border-left: 3px solid #4CAF50;
+}
+
+.event-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.event-item-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.delete-event-btn {
+  background: none;
+  border: none;
+  color: #f44336;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.event-item-time {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 5px 0;
+}
+
+.event-item-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.event-item-actions button {
+  flex: 1;
+  padding: 3px 0;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.event-item-attendees {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 5px;
+  text-align: right;
+}
+
+.no-events {
+  font-size: 0.9rem;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 10px 0;
 } 

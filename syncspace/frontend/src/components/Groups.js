@@ -16,6 +16,11 @@ function Groups({ currentUser }) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupMembers, setGroupMembers] = useState([]);
   const [showManageMembers, setShowManageMembers] = useState(false);
+  const [groupEvents, setGroupEvents] = useState([]);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDescription, setNewEventDescription] = useState('');
+  const [newEventDateTime, setNewEventDateTime] = useState('');
 
   // Fetch user's groups
   useEffect(() => {
@@ -29,6 +34,7 @@ function Groups({ currentUser }) {
     if (selectedGroup) {
       fetchGroupMessages();
       fetchGroupMembers();
+      fetchGroupEvents();
     }
   }, [selectedGroup]);
 
@@ -66,6 +72,19 @@ function Groups({ currentUser }) {
       })
       .catch(error => {
         console.error('Error fetching group members:', error);
+      });
+  };
+
+  // Fetch group events
+  const fetchGroupEvents = () => {
+    if (!selectedGroup) return;
+    
+    axios.get(`${API_URL}/groups/${selectedGroup.id}/events?user_id=${currentUser.id}`)
+      .then(response => {
+        setGroupEvents(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching group events:', error);
       });
   };
 
@@ -157,9 +176,9 @@ function Groups({ currentUser }) {
 
   // Remove a member from a group
   const removeMemberFromGroup = (memberId) => {
-    if (!selectedGroup || memberId === selectedGroup.created_by) return;
+    if (!selectedGroup || !isGroupAdmin()) return;
     
-    axios.delete(`${API_URL}/groups/${selectedGroup.id}/members/${memberId}`)
+    axios.delete(`${API_URL}/groups/${selectedGroup.id}/members/${memberId}?admin_id=${currentUser.id}`)
       .then(() => {
         fetchGroupMembers();
       })
@@ -174,6 +193,81 @@ function Groups({ currentUser }) {
     
     const memberIds = groupMembers.map(member => member.id);
     return results.filter(user => !memberIds.includes(user.id));
+  };
+
+  // Create a new event
+  const createEvent = () => {
+    if (!newEventTitle.trim() || !newEventDateTime) return;
+    
+    const eventData = {
+      title: newEventTitle,
+      description: newEventDescription,
+      event_time: newEventDateTime,
+      creator_id: currentUser.id
+    };
+    
+    axios.post(`${API_URL}/groups/${selectedGroup.id}/events`, eventData)
+      .then(response => {
+        setGroupEvents([...groupEvents, response.data]);
+        setNewEventTitle('');
+        setNewEventDescription('');
+        setNewEventDateTime('');
+        setShowCreateEvent(false);
+      })
+      .catch(error => {
+        console.error('Error creating event:', error);
+      });
+  };
+
+  // Update event attendance status
+  const updateEventStatus = (eventId, status) => {
+    axios.put(`${API_URL}/events/${eventId}/status`, {
+      user_id: currentUser.id,
+      status: status
+    })
+      .then(() => {
+        // Update local state
+        setGroupEvents(groupEvents.map(event => 
+          event.id === eventId 
+            ? { ...event, user_status: status } 
+            : event
+        ));
+      })
+      .catch(error => {
+        console.error('Error updating event status:', error);
+      });
+  };
+
+  // Format date for display
+  const formatDateTime = (dateTimeStr) => {
+    const options = { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(dateTimeStr).toLocaleDateString(undefined, options);
+  };
+
+  // Check if user is group admin
+  const isGroupAdmin = () => {
+    if (!selectedGroup) return false;
+    const member = groupMembers.find(m => m.id === currentUser.id);
+    return member && member.admin === 1;
+  };
+
+  // Delete an event
+  const deleteEvent = (eventId) => {
+    if (!isGroupAdmin()) return;
+    
+    axios.delete(`${API_URL}/events/${eventId}?user_id=${currentUser.id}`)
+      .then(() => {
+        setGroupEvents(groupEvents.filter(event => event.id !== eventId));
+      })
+      .catch(error => {
+        console.error('Error deleting event:', error);
+      });
   };
 
   return (
@@ -257,6 +351,7 @@ function Groups({ currentUser }) {
                   onClick={() => {
                     setSelectedGroup(group);
                     setShowManageMembers(false);
+                    setShowCreateEvent(false);
                   }}
                 >
                   {group.name}
@@ -281,7 +376,10 @@ function Groups({ currentUser }) {
                 </div>
                 <button 
                   className="manage-members-btn"
-                  onClick={() => setShowManageMembers(!showManageMembers)}
+                  onClick={() => {
+                    setShowManageMembers(!showManageMembers);
+                    setShowCreateEvent(false);
+                  }}
                 >
                   {showManageMembers ? 'Back to Chat' : 'Manage Members'}
                 </button>
@@ -360,15 +458,17 @@ function Groups({ currentUser }) {
                       {groupMembers.map(member => (
                         <li key={member.id}>
                           {member.name}
-                          {member.id === selectedGroup.created_by ? (
+                          {member.admin === 1 ? (
                             <span className="admin-badge">Admin</span>
                           ) : (
-                            <button 
-                              className="remove-btn"
-                              onClick={() => removeMemberFromGroup(member.id)}
-                            >
-                              Remove
-                            </button>
+                            isGroupAdmin() && (
+                              <button 
+                                className="remove-btn"
+                                onClick={() => removeMemberFromGroup(member.id)}
+                              >
+                                Remove
+                              </button>
+                            )
                           )}
                         </li>
                       ))}
@@ -391,6 +491,92 @@ function Groups({ currentUser }) {
                 ) : (
                   <p>Loading members...</p>
                 )}
+                
+                <div className="group-events-section">
+                  <div className="events-header">
+                    <h3>Upcoming Events</h3>
+                    <button 
+                      className="create-event-btn"
+                      onClick={() => setShowCreateEvent(!showCreateEvent)}
+                    >
+                      {showCreateEvent ? 'Cancel' : '+ Event'}
+                    </button>
+                  </div>
+                  
+                  {showCreateEvent && (
+                    <div className="create-event-form">
+                      <input
+                        type="text"
+                        placeholder="Event Title"
+                        value={newEventTitle}
+                        onChange={(e) => setNewEventTitle(e.target.value)}
+                      />
+                      <textarea
+                        placeholder="Event Description"
+                        value={newEventDescription}
+                        onChange={(e) => setNewEventDescription(e.target.value)}
+                      ></textarea>
+                      <input
+                        type="datetime-local"
+                        value={newEventDateTime}
+                        onChange={(e) => setNewEventDateTime(e.target.value)}
+                      />
+                      <button 
+                        onClick={createEvent}
+                        disabled={!newEventTitle.trim() || !newEventDateTime}
+                      >
+                        Create Event
+                      </button>
+                    </div>
+                  )}
+                  
+                  <div className="group-events-list">
+                    {groupEvents.length > 0 ? (
+                      <ul>
+                        {groupEvents.map(event => (
+                          <li key={event.id} className="group-event-item">
+                            <div className="event-item-header">
+                              <h4>{event.title}</h4>
+                              {isGroupAdmin() && (
+                                <button 
+                                  className="delete-event-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteEvent(event.id);
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                            <div className="event-item-time">{formatDateTime(event.event_time)}</div>
+                            <div className="event-item-actions">
+                              <button 
+                                className={`attend-btn ${event.user_status === 'attending' ? 'active' : ''}`}
+                                onClick={() => updateEventStatus(event.id, 'attending')}
+                                disabled={event.user_status === 'attending'}
+                              >
+                                Going
+                              </button>
+                              <button 
+                                className={`not-attend-btn ${event.user_status === 'not_attending' ? 'active' : ''}`}
+                                onClick={() => updateEventStatus(event.id, 'not_attending')}
+                                disabled={event.user_status === 'not_attending'}
+                              >
+                                Not Going
+                              </button>
+                            </div>
+                            <div className="event-item-attendees">
+                              {event.attending_count} attending
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="no-events">No upcoming events</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </>
