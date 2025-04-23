@@ -270,4 +270,92 @@ def register_group_routes(app):
             return jsonify({"error": str(e)}), 500
         finally:
             cursor.close()
+            db.close()
+
+    @app.route('/groups/<int:group_id>/members/<int:user_id>/admin', methods=['PUT'])
+    def toggle_admin_status(group_id, user_id):
+        admin_id = request.args.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({"error": "Missing admin_id parameter"}), 400
+        
+        db = get_db_connection()
+        if db is None:
+            return jsonify({"error": "Database connection failed"}), 500
+
+        cursor = db.cursor()
+        try:
+            # Check if the requester is an admin
+            cursor.execute("""
+                SELECT 1 FROM group_chat_members 
+                WHERE group_id = %s AND user_id = %s AND admin = 1
+            """, (group_id, admin_id))
+            
+            if not cursor.fetchone():
+                return jsonify({"error": "Only group admins can modify admin status"}), 403
+                
+            # Get current admin status
+            cursor.execute("""
+                SELECT admin FROM group_chat_members 
+                WHERE group_id = %s AND user_id = %s
+            """, (group_id, user_id))
+            
+            result = cursor.fetchone()
+            if not result:
+                return jsonify({"error": "User is not a member of this group"}), 404
+                
+            current_status = result[0]
+            new_status = 1 if current_status == 0 else 0
+            
+            # Update admin status
+            cursor.execute("""
+                UPDATE group_chat_members 
+                SET admin = %s 
+                WHERE group_id = %s AND user_id = %s
+            """, (new_status, group_id, user_id))
+            
+            db.commit()
+            return jsonify({"message": "Admin status updated successfully", "admin": new_status}), 200
+        except Exception as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cursor.close()
+            db.close()
+
+    @app.route('/groups/<int:group_id>', methods=['DELETE'])
+    def delete_group(group_id):
+        admin_id = request.args.get('admin_id')
+        
+        if not admin_id:
+            return jsonify({"error": "Missing admin_id parameter"}), 400
+        
+        db = get_db_connection()
+        if db is None:
+            return jsonify({"error": "Database connection failed"}), 500
+
+        cursor = db.cursor()
+        try:
+            # Check if the requester is an admin
+            cursor.execute("""
+                SELECT 1 FROM group_chat_members 
+                WHERE group_id = %s AND user_id = %s AND admin = 1
+            """, (group_id, admin_id))
+            
+            if not cursor.fetchone():
+                return jsonify({"error": "Only group admins can delete groups"}), 403
+                
+            # Delete the group (cascade will delete members, messages, events)
+            cursor.execute("DELETE FROM group_chats WHERE id = %s", (group_id,))
+            
+            if cursor.rowcount == 0:
+                return jsonify({"error": "Group not found"}), 404
+                
+            db.commit()
+            return jsonify({"message": "Group deleted successfully"}), 200
+        except Exception as e:
+            db.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cursor.close()
             db.close() 

@@ -108,13 +108,21 @@ function Groups({ currentUser }) {
   };
 
   // Search for users to add to a group
-  const searchUsers = () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
+  const searchUsers = (query = searchQuery) => {
+    // If search box is clicked but empty, show all users
+    if (query === '') {
+      axios.get(`${API_URL}/users/search?query=&current_user_id=${currentUser.id}&show_all=true`)
+        .then(response => {
+          setSearchResults(response.data);
+        })
+        .catch(error => {
+          console.error('Error searching users:', error);
+        });
       return;
     }
     
-    axios.get(`${API_URL}/users/search?query=${searchQuery}&current_user_id=${currentUser.id}`)
+    // Otherwise search with the query
+    axios.get(`${API_URL}/users/search?query=${query}&current_user_id=${currentUser.id}`)
       .then(response => {
         setSearchResults(response.data);
       })
@@ -270,6 +278,35 @@ function Groups({ currentUser }) {
       });
   };
 
+  // Toggle admin status for a user
+  const toggleAdminStatus = (memberId) => {
+    if (!selectedGroup || !isGroupAdmin()) return;
+    
+    axios.put(`${API_URL}/groups/${selectedGroup.id}/members/${memberId}/admin?admin_id=${currentUser.id}`)
+      .then(response => {
+        fetchGroupMembers();
+      })
+      .catch(error => {
+        console.error('Error updating admin status:', error);
+      });
+  };
+
+  // Delete the current group
+  const deleteGroup = () => {
+    if (!selectedGroup || !isGroupAdmin()) return;
+    
+    if (window.confirm(`Are you sure you want to delete the group "${selectedGroup.name}"? This action cannot be undone.`)) {
+      axios.delete(`${API_URL}/groups/${selectedGroup.id}?admin_id=${currentUser.id}`)
+        .then(() => {
+          setSelectedGroup(null);
+          fetchGroups();
+        })
+        .catch(error => {
+          console.error('Error deleting group:', error);
+        });
+    }
+  };
+
   return (
     <div className="groups-container">
       <div className="groups-sidebar">
@@ -294,10 +331,16 @@ function Groups({ currentUser }) {
                 type="text"
                 placeholder="Search users..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyUp={(e) => e.key === 'Enter' && searchUsers()}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  searchUsers(e.target.value);
+                }}
+                onFocus={() => {
+                  if (!searchQuery) {
+                    searchUsers('');
+                  }
+                }}
               />
-              <button onClick={searchUsers}>Search</button>
             </div>
             
             {searchResults.length > 0 && (
@@ -374,6 +417,14 @@ function Groups({ currentUser }) {
                 <div className="group-members-count">
                   {groupMembers.length} members
                 </div>
+                {isGroupAdmin() && (
+                  <button 
+                    className="delete-group-btn"
+                    onClick={deleteGroup}
+                  >
+                    Delete Group
+                  </button>
+                )}
                 <button 
                   className="manage-members-btn"
                   onClick={() => {
@@ -429,10 +480,16 @@ function Groups({ currentUser }) {
                       type="text"
                       placeholder="Search users..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyUp={(e) => e.key === 'Enter' && searchUsers()}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        searchUsers(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (!searchQuery) {
+                          searchUsers('');
+                        }
+                      }}
                     />
-                    <button onClick={searchUsers}>Search</button>
                   </div>
                   
                   {searchResults.length > 0 && (
@@ -462,13 +519,29 @@ function Groups({ currentUser }) {
                             <span className="admin-badge">Admin</span>
                           ) : (
                             isGroupAdmin() && (
-                              <button 
-                                className="remove-btn"
-                                onClick={() => removeMemberFromGroup(member.id)}
-                              >
-                                Remove
-                              </button>
+                              <div className="member-actions">
+                                <button 
+                                  className="make-admin-btn"
+                                  onClick={() => toggleAdminStatus(member.id)}
+                                >
+                                  Make Admin
+                                </button>
+                                <button 
+                                  className="remove-btn"
+                                  onClick={() => removeMemberFromGroup(member.id)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             )
+                          )}
+                          {member.admin === 1 && member.id !== currentUser.id && isGroupAdmin() && (
+                            <button 
+                              className="remove-admin-btn"
+                              onClick={() => toggleAdminStatus(member.id)}
+                            >
+                              Remove Admin
+                            </button>
                           )}
                         </li>
                       ))}
