@@ -139,6 +139,7 @@ def register_user_routes(app):
     def search_users():
         query = request.args.get('query', '')
         current_user_id = request.args.get('current_user_id')
+        show_all = request.args.get('show_all', 'false').lower() == 'true'
         
         if not current_user_id:
             return jsonify({"error": "Missing current_user_id parameter"}), 400
@@ -149,16 +150,29 @@ def register_user_routes(app):
             
         cursor = db.cursor()
         try:
-            # Search for users by name or username, excluding current user
-            sql = """
-                SELECT id, name, username, email 
-                FROM user_verification 
-                WHERE (name LIKE %s OR username LIKE %s) 
-                AND id != %s 
-                LIMIT 10
-            """
-            search_param = f"%{query}%"
-            cursor.execute(sql, (search_param, search_param, current_user_id))
+            # If show_all is true or query is empty, show all users (limited to 20)
+            if show_all or not query:
+                sql = """
+                    SELECT id, name, username, email 
+                    FROM user_verification 
+                    WHERE id != %s 
+                    ORDER BY name
+                    LIMIT 20
+                """
+                cursor.execute(sql, (current_user_id,))
+            else:
+                # Search for users by name or username, excluding current user
+                sql = """
+                    SELECT id, name, username, email 
+                    FROM user_verification 
+                    WHERE (name LIKE %s OR username LIKE %s) 
+                    AND id != %s 
+                    ORDER BY name
+                    LIMIT 20
+                """
+                search_param = f"%{query}%"
+                cursor.execute(sql, (search_param, search_param, current_user_id))
+                
             users = cursor.fetchall()
             
             result = [{
