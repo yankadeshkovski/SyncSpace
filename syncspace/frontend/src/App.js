@@ -390,7 +390,41 @@ function App() {
       </div>
     );
   }
+  function renderAboutUs() {
+    return (
+      <div className="aboutus-container">
+        <h2>About Us</h2>
 
+        <img src="/logo.png" alt="SyncSpace Logo" className="aboutus-logo" />
+
+        <p>
+        SyncSpace is a collaborative platform designed to streamline communication and coordination within communities. 
+        Created by a dedicated team — Yanka Deshkovski, Steven Cartwright, Priyanka Jain, and Laurynas Kanopka — SyncSpace brings together real-time messaging, group management, and event planning in one seamless interface. 
+        With features like customizable group chats, polls, and shared resources, our mission is to make staying connected simple, efficient, and productive for everyone.
+        </p>
+
+        <div className="team-grid">
+          <div className="team-member">
+            <img src="/yanka.png" alt="Yanka" className="team-photo" />
+            <p>Yanka Deshkovski</p>
+          </div>
+          <div className="team-member">
+            <img src="/steven.png" alt="Steven" className="team-photo" />
+            <p>Steven Cartwright</p>
+          </div>
+          <div className="team-member">
+            <img src="/Priyanka.png" alt="Priyanka" className="team-photo" />
+            <p>Priyanka Jain</p>
+          </div>
+          <div className="team-member">
+            <img src="/Lukas.png" alt="Lukas" className="team-photo" />
+            <p>Lukas Kanopka</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   // Render content based on active tab
   function renderContent() {
     switch (activeTab) {
@@ -406,6 +440,8 @@ function App() {
         return renderUsersTable();
       case "profile":
         return renderProfileForm();
+      case "about":
+        return renderAboutUs();
       default:
         return null;
     }
@@ -423,6 +459,7 @@ function App() {
               <button onClick={() => setActiveTab("groups")}>Groups</button>
               <button onClick={() => setActiveTab("events")}>Events</button>
               <button onClick={() => setActiveTab("profile")}>Profile</button>
+              <button onClick={() => setActiveTab("about")}>About Us</button>
               <button onClick={() => {
                 setCurrentUser(null);
                 setActiveTab("login");
