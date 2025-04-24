@@ -11,15 +11,15 @@ from utils.db import get_db_connection
 
 
 # Initialize Flask app
-app = Flask(__name__)
-CORS(app)
-api = Api(app)
+application = Flask(__name__)
+CORS(application)
+api = Api(application)
 
 # Register routes
-register_user_routes(app)
-register_message_routes(app)
-register_group_routes(app)
-register_event_routes(app)
+register_user_routes(application)
+register_message_routes(application)
+register_group_routes(application)
+register_event_routes(application)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
